@@ -1,0 +1,214 @@
+import React from 'react';
+import { NavLink } from 'react-router-dom';
+import SearchBox from './SearchBox';
+import authHeader from "../services/auth-header";
+
+//import {BrowserRouter as Router,Route,Link ,NavLink} 
+//from "react-router-dom";
+import axios from "axios";
+import  ReactPaginate from 'react-paginate';
+//import '../node_modules/bootstrap/dist/css/bootstrap.min.css';
+class DeleteProduct extends React.Component {
+    constructor(props) {
+        super(props);
+        this.state = {
+            offset: 0,
+            perPage: 5,
+            currentPage: 0,
+            searchField: '',   
+            orgtableData: [],         
+            product: [],
+            errMsg: ""
+        }
+
+        this.handlePageClick = this.handlePageClick.bind(this);
+    }
+
+    handlePageClick = (e) => {
+        const selectedPage = e.selected;
+        const offset = selectedPage * this.state.perPage;
+
+        this.setState({
+            currentPage: selectedPage,
+            offset: offset
+        }, () => {
+            this.loadMoreData()
+        });
+
+    };
+
+    loadMoreData() {
+		const data = this.state.orgtableData;
+		
+		const slice = data.slice(this.state.offset, this.state.offset + this.state.perPage)
+		this.setState({
+			pageCount: Math.ceil(data.length / this.state.perPage),
+			product:slice
+		})
+	
+    }
+
+    componentDidMount() {
+        axios.get(`http://localhost:8080/product/allproduct`, { headers: authHeader() }).then((responseData) => {
+            console.log(responseData);
+            var data = responseData.data;
+				
+            var slice = data.slice(this.state.offset, this.state.offset + this.state.perPage)
+
+            this.setState({
+                pageCount: Math.ceil(data.length / this.state.perPage),
+                    orgtableData :responseData.data,
+                 product: slice 
+                })
+            console.log(data);
+        }).catch((error) => {
+            console.log("Some error in reading the data ");
+            this.setState({ errMsg: "Error In Reading product Data" })
+        })
+    }
+
+    componentDidUpdate(){
+        axios.get(`http://localhost:8080/product/allproduct`, { headers: authHeader() }).then((responseData) => {
+            console.log(responseData);
+            this.setState({ product: responseData.data })
+
+        }).catch((error) => {
+            console.log("Some error in reading the data ");
+            this.setState({ errMsg: "Error In Reading product Data" })
+        })
+
+    }
+
+    delete = (id) => {//(id){
+        alert(id)
+
+        console.log(this.state.product)
+        for(const product of this.state.product){
+        
+            if(product.productId == id){
+                console.log(product);
+                const url =`http://localhost:8080/product/delete/`;
+                axios.put((url),{ ...product }, { headers: authHeader() })
+                .then((responseEmpData) => {
+                            console.log(responseEmpData);
+                })
+                .catch((error) => {
+                    console.log(error);
+                    console.log("Some error in updating product data");
+                })
+         
+                break;
+            }
+        }
+        axios.get(`http://localhost:8080/product/allproduct`, { headers: authHeader() }).then((responseData) => {
+            console.log(responseData);
+            this.setState({ product: responseData.data })
+
+        }).catch((error) => {
+            console.log("Some error in reading the data ");
+            this.setState({ errMsg: "Error In Reading product Data" })
+        })
+
+    }
+
+    render() {
+        
+
+        const { product, searchField } = this.state;
+        var filteredData = product.filter(productData => {
+    
+            if (productData.productName.toLowerCase().includes(searchField.toLowerCase())) {
+                return productData;
+
+            }
+            else if (productData.productBrand.toLowerCase().includes(searchField.toLowerCase())) {
+                return productData;
+
+            }
+            else if (productData.productModel.toLowerCase().includes(searchField.toLowerCase())) {
+                return productData;
+
+            }
+
+        })
+         
+            .map(
+                (productList, index) => {
+                    return (
+                        <tr key={productList.productId}>
+                            <td> {productList.productName} </td>
+                            <td>{productList.productBrand} </td>
+                            <td> {productList.productModel}</td>
+                            <td> {productList.productCount}</td>
+                            <td> {productList.productPrice}</td>
+                            <td>
+                            <button type="button" onClick={() => { this.delete(`${productList.productId}`) }}>Delete </button>
+                            </td>
+                        </tr>
+
+
+                    )
+                }
+            );
+
+        return (
+            <div>
+
+
+                <h1>List Of Products</h1>
+                
+
+                <table class="table table-striped table-hover" border="2">
+                    <thead>
+                        <tr>
+                            <th scope="col md-2" className="bg-dark text-white">Product Name</th>
+                            <th scope="col md-2" className="bg-dark text-white">Brand Name</th>
+                            <th scope="col md-2" className="bg-dark text-white">Model Name</th>
+                            <th scope="col md-2" className="bg-dark text-white">Price</th>
+                            <th scope="col md-2" className="bg-dark text-white">Available Count</th>
+                            <th scope="col md-2" className="bg-dark text-white">Action</th>
+                        </tr>
+
+                    </thead>
+
+                    <tbody>
+                        <tr>
+
+                            <td>
+
+                                <SearchBox placeholder="Product Name" id="form1" class="form-control" handleChange={(e) => this.setState({ searchField: e.target.value })} />
+
+                            </td>
+                             <td>
+                                <SearchBox placeholder="Brand Name" handleChange={(e) => this.setState({ searchField: e.target.value })} />
+                            </td>
+                            <td>
+                                <SearchBox placeholder="Model Name" handleChange={(e) => this.setState({ searchField: e.target.value })} />
+                            </td>
+                            <td></td><td></td><td></td>
+
+                        </tr>
+                        {filteredData}
+
+
+                    </tbody>
+                </table>
+                <ReactPaginate
+                    previousLabel={"prev"}
+                    nextLabel={"next"}
+                    breakLabel={"..."}
+                    breakClassName={"break-me"}
+                    pageCount={this.state.pageCount}
+                    marginPagesDisplayed={2}
+                    pageRangeDisplayed={5}
+                    onPageChange={this.handlePageClick}
+                    containerClassName={"pagination"}
+                    subContainerClassName={"pages pagination"}
+                    activeClassName={"active"}/>
+            </div>
+        )
+    }
+
+}
+
+export default DeleteProduct;
